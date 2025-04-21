@@ -20,14 +20,17 @@
     "test:e2e": "jest --config ./test/jest-e2e.json"
   },
   "dependencies": {
+    "@google/genai": "^0.9.0",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.0.1",
     "@nestjs/platform-express": "^11.0.1",
+    "@prisma/client": "^6.6.0",
     "@remotion/captions": "^4.0.286",
     "@remotion/install-whisper-cpp": "^4.0.286",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",
+    "prisma": "^6.6.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1"
   },

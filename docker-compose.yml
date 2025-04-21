@@ -1,0 +1,17 @@
+version: '3.3'
+
+services:
+  database:
+    container_name: yt-postgresql
+    image: ankane/pgvector:v0.5.1
+    restart: always
+    volumes:
+      - ./prisma:/docker-entrypoint-initdb.d
+      - postgres_data:/var/lib/postgresql/data
+    env_file:
+      - .env
+    ports:
+      - '5443:5432'
+
+volumes:
+  postgres_data:
