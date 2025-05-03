@@ -1,106 +1,50 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateStockClipDto, SearchStockClipDto } from './dto';
 import { FetchStockClipsDto, SortOrder } from './dto/fetch-stock-clips.dto';
 import { GoogleGenAI } from '@google/genai';
 import { Prisma } from '@prisma/client';
+import OpenAI from 'openai';
 
 @Injectable()
 export class StockClipsService {
+  private openai: OpenAI;
   private readonly logger = new Logger(StockClipsService.name);
   private genAI: GoogleGenAI;
   private embeddingModel = 'gemini-embedding-exp-03-07';
 
   constructor(private prisma: PrismaService) {
+    this.openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+      baseURL: process.env.OPENAI_BASE_URL,
+      defaultQuery: { 'api-version': process.env.OPENAI_API_VERSION },
+      defaultHeaders: { 'api-key': process.env.OPENAI_API_KEY },
+    });
     this.genAI = new GoogleGenAI({
       apiKey: process.env.GOOGLE_API_KEY,
     });
+  }
+
+  async getEmbedding(text: string) {
+    try {
+      const response = await this.openai.embeddings.create({
+        input: text,
+        model: 'text-embedding-3-small',
+      });
+      return response.data[0].embedding;
+    } catch (error: any) {
+      this.logger.error('Embedding Error', { error });
+      throw error;
+    }
   }
 
   /**
    * Generate embeddings for text using Gemini API
    */
   private async generateEmbeddings(text: string): Promise<number[]> {
-    try {
-      console.log('generating embeddings', text);
-      const response = await this.genAI.models.embedContent({
-        model: this.embeddingModel,
-        contents: text,
-      });
-      console.log('embeddings response', response);
-
-      // Return empty array if embeddings are undefined
-      if (!response.embeddings) {
-        this.logger.warn('No embeddings returned from API');
-        return [];
-      }
-
-      // Make sure we're getting an array of numbers
-      const embeddings = response.embeddings;
-      console.log('embeddings', embeddings);
-
-      // Expected dimension in PostgreSQL schema
-      const EXPECTED_DIMENSIONS = 1536;
-      let embeddingValues: number[] = [];
-
-      // Handle the case where embeddings is an array with a values property
-      if (Array.isArray(embeddings) && embeddings.length > 0) {
-        // Check if the first element has a values property (which is an array of numbers)
-        if (
-          embeddings[0] &&
-          embeddings[0].values &&
-          Array.isArray(embeddings[0].values)
-        ) {
-          this.logger.log(
-            `Found embeddings with ${embeddings[0].values.length} values`,
-          );
-          embeddingValues = embeddings[0].values;
-        }
-        // Check if first element is a number (direct array of numbers)
-        else if (typeof embeddings[0] === 'number') {
-          embeddingValues = embeddings as number[];
-        } else {
-          this.logger.warn(
-            'Embeddings not in expected format, trying to extract values',
-          );
-          // Try JSON.stringify to see the structure
-          this.logger.warn(
-            `Embeddings structure: ${JSON.stringify(embeddings).substring(0, 200)}...`,
-          );
-          return [];
-        }
-      }
-
-      // Handle dimension mismatch - resize the embedding vector to expected dimensions
-      if (embeddingValues.length !== EXPECTED_DIMENSIONS) {
-        this.logger.warn(
-          `Dimension mismatch: got ${embeddingValues.length}, expected ${EXPECTED_DIMENSIONS}. Adjusting vector size...`,
-        );
-
-        if (embeddingValues.length > EXPECTED_DIMENSIONS) {
-          // Truncate the vector if it's too large
-          embeddingValues = embeddingValues.slice(0, EXPECTED_DIMENSIONS);
-          this.logger.log(
-            `Truncated vector to ${embeddingValues.length} dimensions`,
-          );
-        } else {
-          // Pad the vector with zeros if it's too small
-          while (embeddingValues.length < EXPECTED_DIMENSIONS) {
-            embeddingValues.push(0);
-          }
-          this.logger.log(
-            `Padded vector to ${embeddingValues.length} dimensions`,
-          );
-        }
-      }
-
-      return embeddingValues;
-    } catch (error) {
-      this.logger.error('Error generating embeddings:', error);
-      // Return empty array as fallback instead of throwing
-      // This allows the app to continue functioning even if the API is not enabled
-      return [];
-    }
+    const embeddings = await this.getEmbedding(text);
+    return embeddings;
   }
 
   /**
