@@ -4,6 +4,7 @@ import { AppService } from './app.service';
 import { TranscriptionModule } from './transcription/transcription.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { StockClipsModule } from './stock-clips/stock-clips.module';
+import { StockImagesModule } from './stock-images/stock-images.module';
 import { ConfigModule } from '@nestjs/config';
 
 @Module({
@@ -12,6 +13,7 @@ import { ConfigModule } from '@nestjs/config';
     TranscriptionModule,
     PrismaModule,
     StockClipsModule,
+    StockImagesModule,
   ],
   controllers: [AppController],
   providers: [AppService],
